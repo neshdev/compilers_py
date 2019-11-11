@@ -100,7 +100,8 @@ def lexer(statements):
                 s = start + 1
                 e = statements[s:].find('"')
                 if e == -1:
-                    return Token("ERROR", statements[start:], line_number, col_start, msg='Unable to find matching "')
+                    yield Token("ERROR", statements[start:], line_number, col_start, msg='Unable to find matching "')
+                    break
                 token_value = statements[start:(s+e+1)]
                 col_end = s+e+1
 
@@ -117,9 +118,14 @@ def lexer(statements):
                     yield Token(token_type, token_value, line_number, col_start, "")
             elif token_type == "BEGIN_MULTILINE_COMMENT":
                 idx = statements[start:].find("*)")
+                if (idx == -1):
+                    yield Token("ERROR", statements[start:], line_number, col_start, msg='Unable to find matching *)')
+                    break
                 line_number = line_number + statements[start:idx].count('\n')
                 start = start + idx
                 continue
+            elif token_type in ["INVALID_COMPARISON_EQ_OP", "INVALID_COMPARISON_GTEQ_OP", "INVALID_COMPARISON_GT_OP"]:
+                yield Token("ERROR", token_value, line_number, col_start, msg="Operator is not supported")
             elif token_type not in ["WHITESPACE", "INLINE_COMMENT", "BEGIN_MULTILINE_COMMENT", "END_MULTILINE_COMMENT"]:
                 yield Token(token_type, token_value, line_number, col_start, "")
 
@@ -140,7 +146,13 @@ SAMPLE_COOL = "invalid_cool.cl"
 def run():
     statement = get_contents(SAMPLE_COOL)
     tokens = lexer(statement)
+    errors = []
     for x in tokens:
+        if x.type == "ERROR":
+            errors.append(x)
+        print(x)
+    print("------------")
+    for x in errors:
         print(x)
 
 
