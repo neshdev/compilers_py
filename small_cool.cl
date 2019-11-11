@@ -7,7 +7,7 @@ class Main {
             variable1 <- 1;
             variable2 <- a; --inline comment1
             self; --inline comment2
-            string <- "abcd"
+            string <- "abcd";
         }
     };
 };

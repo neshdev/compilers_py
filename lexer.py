@@ -12,16 +12,34 @@ def strip_string(contents):
     return contents
 
 
+def max_match(token_specifications, start, statement):
+    # This include the match for all chars, might not be a good idea!
+    max_length_so_far = 0
+    best_t = None
+    best_matched = None
+    for t, r in token_specifications:
+        pattern = f"(?P<{t}>{r})"
+        matched = re.compile(pattern).match(statement, start)
+
+        if matched:
+            s, e = matched.regs[0]
+            size = e-s
+            if size > max_length_so_far:
+                best_matched = matched
+                max_length_so_far = size
+                best_t = t
+    return (best_t, best_matched)
+
+
 def lexer(statements):
     token_specifications = [
         ('INT', r'\d+'),
         ('STRING_QUOTE', r'"'),
 
-        ('TYPE_ID', r'[A-Z][A-Za-z0-9_]*|SELF_TYPE|self'),
-        ('OBJECT_ID', r'[a-z][A-Za-z0-9_]*'),
+
 
         # keywords
-        ('KEYWORD_CLASS', r'[cC][lL][aA][sS]'),
+        ('KEYWORD_CLASS', r'[cC][lL][aA][sS][sS]'),
         ('KEYWORD_ELSE', r'[eE][lL][sS][eE]'),
         ('KEYWORD_fi', r'[fF][iI]'),
         ('KEYWORD_in', r'[iI][nN]'),
@@ -39,6 +57,9 @@ def lexer(statements):
         ('KEYWORD_not', r'[nN][oO][tT]'),
         ('FALSE', r'[fF][aA][lL][sS][eE]'),
         ('TRUE', r'[tT][rR][uU][eE]'),
+
+        ('TYPE_ID', r'[A-Z][A-Za-z0-9_]*|SELF_TYPE|self'),
+        ('OBJECT_ID', r'[a-z][A-Za-z0-9_]*'),
 
         ('VALID_COMPARISON_EQ_OP', r'='),
         ('VALID_COMPARISON_LTEQ_OP', r'<='),
@@ -74,7 +95,7 @@ def lexer(statements):
         ('MULT_OP', r'\*'),
         ('NEG_OP', r'~'),
 
-        ('ERROR', r'.')
+        ('ERROR', r'[^^]')  # This is not working, we need a default catch all
 
     ]
 
@@ -85,13 +106,19 @@ def lexer(statements):
     end = len(statements)
     pattern = re.compile(master)
     line_number = 1
+    col_start = 0
     while(end > start):
         matched = pattern.match(statements, start)
         if matched:
+            # find maximum match, might have to go 1 by 1 for regex
+            t, matched = max_match(token_specifications, start, statements)
             token_type = matched.lastgroup
             token_value = matched.group(0)
-            col_start, col_end = matched.regs[0]
+            col_s, col_end = matched.regs[0]
+            col_start = col_start + abs(col_end - col_s)
             line_number = line_number + token_value.count('\n')
+            if (token_value.count('\n')):
+                col_start = 0
 
             if token_type == "STRING_QUOTE":
                 """
@@ -144,7 +171,7 @@ SAMPLE_COOL = "invalid_cool.cl"
 
 
 def run():
-    statement = get_contents(SAMPLE_COOL)
+    statement = get_contents(SMALL_COOL)
     tokens = lexer(statement)
     errors = []
     for x in tokens:
