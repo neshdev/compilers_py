@@ -15,7 +15,7 @@ def strip_string(contents):
 def lexer(statements):
     token_specifications = [
         ('INT', r'\d+'),
-        ('STRING', r'"[\s\S]*"'),
+        ('STRING_QUOTE', r'"'),
 
         ('TYPE_ID', r'[A-Z][A-Za-z0-9_]*|SELF_TYPE|self'),
         ('OBJECT_ID', r'[a-z][A-Za-z0-9_]*'),
@@ -93,11 +93,19 @@ def lexer(statements):
             col_start, col_end = matched.regs[0]
             line_number = line_number + token_value.count('\n')
 
-            if token_type == "STRING":
+            if token_type == "STRING_QUOTE":
                 """
                 Error check for string here!
                 """
+                s = start + 1
+                e = statements[s:].find('"')
+                if e == -1:
+                    return Token("ERROR", statements[start:], line_number, col_start, msg='Unable to find matching "')
+                token_value = statements[start:(s+e+1)]
+                col_end = s+e+1
+
                 valid = True
+
                 if '\x00' in token_value:
                     valid = False
                     yield Token("ERROR", token_value, line_number, col_start, msg="Contains null character")
@@ -126,10 +134,11 @@ Token = collections.namedtuple(
     'Token', ['type', 'value', 'line', 'column', 'msg'])
 
 SMALL_COOL = "small_cool.cl"
+SAMPLE_COOL = "invalid_cool.cl"
 
 
 def run():
-    statement = get_contents(SMALL_COOL)
+    statement = get_contents(SAMPLE_COOL)
     tokens = lexer(statement)
     for x in tokens:
         print(x)
